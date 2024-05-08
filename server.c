@@ -50,22 +50,30 @@ int main() {
     exit(1);
   }
 
-  printf("[STARTING] UDP File Server started. Waiting for client request...\n");
+  printf("[STARTING] UDP File Server started. Waiting for client commands...\n");
 
-  socklen_t addr_size = sizeof(client_addr);
-  recvfrom(server_sockfd, buffer, SIZE, 0, (struct sockaddr*)&client_addr, &addr_size); // Wait for any message from client
+  int continue_running = 1;
+  while (continue_running) {
+    socklen_t addr_size = sizeof(client_addr);
+    recvfrom(server_sockfd, buffer, SIZE, 0, (struct sockaddr*)&client_addr, &addr_size);
 
-  FILE* fp = fopen("server.mp3", "rb");
-  if (fp == NULL) {
-    perror("[ERROR] File not found");
-    exit(1);
+    if (strcmp(buffer, "1") == 0) {
+      printf("[INFO] Client requested the MP3 file.\n");
+      FILE* fp = fopen("server.mp3", "rb");
+      if (fp == NULL) {
+        perror("[ERROR] File not found");
+        exit(1);
+      }
+      send_file_data(fp, server_sockfd, client_addr);
+    } else if (strcmp(buffer, "2") == 0) {
+      printf("[INFO] Client requested to close the server.\n");
+      continue_running = 0;
+    } else {
+      printf("[ERROR] Unknown command received: %s\n", buffer);
+    }
   }
 
-  send_file_data(fp, server_sockfd, client_addr);
-
-  printf("[SUCCESS] Data transfer complete.\n");
   printf("[CLOSING] Closing the server.\n");
-
   close(server_sockfd);
 
   return 0;
