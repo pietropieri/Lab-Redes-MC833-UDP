@@ -9,6 +9,20 @@
 #define TCP_PORT 9090
 #define UDP_PORT 8080
 
+
+
+// Definição da estrutura para armazenar informações da música
+typedef struct {
+    int id;
+    char titulo[100];
+    char interprete[100];
+    char idioma[50];
+    char tipo[50];
+    char refrao[200];
+    char ano_lancamento[100];
+} Musica;
+
+// replace by 8 objects of type Musica so we can list them later
 char* list[8] = {"aaaa", "bbbb", "cccc", "dddd", "eeee", "ffff", "gggg", "hhhh"};
 
 void send_file_data(FILE* fp, int sockfd, struct sockaddr_in addr) {
