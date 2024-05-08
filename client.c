@@ -8,7 +8,7 @@
 void write_file(int sockfd, struct sockaddr_in addr) {
   int n;
   char buffer[SIZE];
-  FILE* fp = fopen("received.txt", "w");
+  FILE* fp = fopen("received.mp3", "wb");
   if (fp == NULL) {
     perror("[ERROR] File opening");
     exit(1);
@@ -21,8 +21,7 @@ void write_file(int sockfd, struct sockaddr_in addr) {
     if (strcmp(buffer, "END") == 0) {
       break;
     }
-    printf("[RECEIVING] Data: %s", buffer);
-    fprintf(fp, "%s", buffer);
+    fwrite(buffer, 1, n, fp);
     bzero(buffer, SIZE);
   }
 

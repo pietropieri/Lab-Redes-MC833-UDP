@@ -11,15 +11,13 @@ void send_file_data(FILE* fp, int sockfd, struct sockaddr_in addr) {
   char buffer[SIZE];
   socklen_t addr_size = sizeof(addr);
 
-  // Sending the data
-  while (fgets(buffer, SIZE, fp) != NULL) {
-    printf("[SENDING] Data: %s", buffer);
-    n = sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr*)&addr, addr_size);
+  while (fread(buffer, 1, SIZE, fp) > 0) {
+    printf("[SENDING] Data of %d bytes\n", strlen(buffer));
+    n = sendto(sockfd, buffer, SIZE, 0, (struct sockaddr*)&addr, addr_size);
     if (n == -1) {
       perror("[ERROR] Sending data to the client.");
       exit(1);
     }
-    bzero(buffer, SIZE);
   }
 
   // Sending the 'END'
@@ -57,7 +55,7 @@ int main() {
   socklen_t addr_size = sizeof(client_addr);
   recvfrom(server_sockfd, buffer, SIZE, 0, (struct sockaddr*)&client_addr, &addr_size); // Wait for any message from client
 
-  FILE* fp = fopen("server.txt", "r");
+  FILE* fp = fopen("server.mp3", "rb");
   if (fp == NULL) {
     perror("[ERROR] File not found");
     exit(1);
