@@ -8,10 +8,14 @@
 #define TCP_PORT 9090
 #define UDP_PORT 8080
 
-void write_file(int sockfd, struct sockaddr_in addr) {
+void write_file(int sockfd, struct sockaddr_in addr, char id) {
     int n;
     char buffer[SIZE];
-    FILE* fp = fopen("received.mp3", "wb");
+    char filename[50];
+
+    sprintf(filename, "received-%c.mp3", id);
+
+    FILE* fp = fopen(filename, "wb");
     if (fp == NULL) {
         perror("[ERROR] File opening");
         exit(1);
@@ -86,14 +90,19 @@ int main(void) {
     char input[10];
 
     while (continue_running) {
-        printf("Enter command (1: Download MP3, 2: Close server, 3: Get list item, 0: Exit client): ");
+        printf("Enter command\n1: Download MP3;\n2: Close server;\n3: Get list item;\n8: List all musics;\n0: Exit client:\n");
         fgets(input, 10, stdin);
         input[strcspn(input, "\n")] = 0;  // Remove newline character
 
         if (strcmp(input, "1") == 0) {
-            printf("[REQUEST] Requesting MP3 file from server.\n");
             send_command_udp(server_sockfd, server_addr, "1");
-            write_file(server_sockfd, server_addr);
+            printf("Enter id (0-7): ");
+            char id;
+            scanf("%s", &id);  // Read the index from user
+            getchar(); 
+            printf("[REQUEST] Requesting MP3 file from server.\n");
+            send_command_udp(server_sockfd, server_addr, &id);
+            write_file(server_sockfd, server_addr, id);
         } else if (strcmp(input, "2") == 0) {
             printf("[REQUEST] Requesting to close the server.\n");
             send_command_udp(server_sockfd, server_addr, "2");
@@ -107,6 +116,8 @@ int main(void) {
         } else if (strcmp(input, "0") == 0) {
             printf("[CLOSING] Exiting client.\n");
             continue_running = 0;
+        } else if (strcmp(input, "8") == 0)  {
+            request_tcp(8);
         } else {
             printf("[ERROR] Invalid command.\n");
         }

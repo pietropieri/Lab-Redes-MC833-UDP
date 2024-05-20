@@ -9,8 +9,6 @@
 #define TCP_PORT 9090
 #define UDP_PORT 8080
 
-
-
 // Definição da estrutura para armazenar informações da música
 typedef struct {
     int id;
@@ -22,8 +20,17 @@ typedef struct {
     char ano_lancamento[100];
 } Musica;
 
-// replace by 8 objects of type Musica so we can list them later
-char* list[8] = {"aaaa", "bbbb", "cccc", "dddd", "eeee", "ffff", "gggg", "hhhh"};
+// Lista de músicas
+Musica list[8] = {
+    {0, "Mamacita", "Mike Leite", "Inglês", "Instrumental", "N/A", "Desconhecido"},
+    {1, "Baião de Dois", "Luiz Gonzaga", "Português", "Forró", "N/A", "Domínio Público"},
+    {2, "Chorinho Típico", "Ernesto Nazareth", "Português", "Choro", "N/A", "Domínio Público"},
+    {3, "Assanhado", "Jacob do Bandolim", "Português", "Choro", "N/A", "Domínio Público"},
+    {4, "Everyday", "Jason Farnham", "Inglês", "Instrumental", "N/A", "Desconhecido"},
+    {5, "Cylinder Five", "Chris Zabriskie", "Inglês", "Instrumental", "N/A", "Desconhecido"},
+    {6, "AEROHEAD", "Haven", "Inglês", "Instrumental", "N/A", "Desconhecido"},
+    {7, "Dreams", "Joakim Karud", "Inglês", "Instrumental", "N/A", "Desconhecido"}
+};
 
 void send_file_data(FILE* fp, int sockfd, struct sockaddr_in addr) {
     int n;
@@ -73,9 +80,20 @@ void* handle_udp(void* arg) {
         buffer[recv_len] = '\0';
 
         if (strcmp(buffer, "1") == 0) {
-            FILE* fp = fopen("server.mp3", "rb");
+            // Wait for the client to send the ID
+            recv_len = recvfrom(sockfd, buffer, SIZE, 0, (struct sockaddr*)&client_addr, &addr_size);
+            buffer[recv_len] = '\0';
+            int id = atoi(buffer);
+
+            // Generate the filename based on the ID
+            char filename[20];
+            snprintf(filename, sizeof(filename), "%d.mp3", id);
+
+            FILE* fp = fopen(filename, "rb");
             if (fp == NULL) {
                 perror("File open failed");
+                strcpy(buffer, "File not found");
+                sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr*)&client_addr, addr_size);
             } else {
                 send_file_data(fp, sockfd, client_addr);
             }
@@ -113,6 +131,7 @@ void* handle_tcp(void* arg) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
+
     while (1) {
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen)) < 0) {
             perror("accept");
@@ -120,9 +139,25 @@ void* handle_tcp(void* arg) {
         }
 
         int valread = read(new_socket, buffer, SIZE);
+        buffer[valread] = '\0';  // Ensure the buffer is null-terminated
         int index = atoi(buffer);
         if (index >= 0 && index < 8) {
-            send(new_socket, list[index], strlen(list[index]), 0);
+            char response[SIZE];
+            snprintf(response, SIZE, "ID: %d\nTítulo: %s\nIntérprete: %s\nIdioma: %s\nTipo: %s\nRefrão: %s\nAno de Lançamento: %s\n",
+                     list[index].id, list[index].titulo, list[index].interprete, list[index].idioma,
+                     list[index].tipo, list[index].refrao, list[index].ano_lancamento);
+            send(new_socket, response, strlen(response), 0);
+        } else if (index == 8) {
+            // Cliente pediu para listar todas as músicas
+            char response[SIZE * 8] = {0};  // Buffer grande o suficiente para todas as músicas
+            for (int i = 0; i < 8; i++) {
+                char song_info[SIZE];
+                snprintf(song_info, SIZE, "ID: %d\nTítulo: %s\nIntérprete: %s\nIdioma: %s\nTipo: %s\nRefrão: %s\nAno de Lançamento: %s\n\n",
+                         list[i].id, list[i].titulo, list[i].interprete, list[i].idioma,
+                         list[i].tipo, list[i].refrao, list[i].ano_lancamento);
+                strcat(response, song_info);
+            }
+            send(new_socket, response, strlen(response), 0);
         } else {
             send(new_socket, "Invalid index", strlen("Invalid index"), 0);
         }
