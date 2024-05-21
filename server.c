@@ -22,16 +22,17 @@ typedef struct {
 
 // Lista de músicas
 Musica list[8] = {
-    {0, "Mamacita", "Mike Leite", "Inglês", "Instrumental", "N/A", "Desconhecido"},
-    {1, "Baião de Dois", "Luiz Gonzaga", "Português", "Forró", "N/A", "Domínio Público"},
-    {2, "Chorinho Típico", "Ernesto Nazareth", "Português", "Choro", "N/A", "Domínio Público"},
-    {3, "Assanhado", "Jacob do Bandolim", "Português", "Choro", "N/A", "Domínio Público"},
-    {4, "Everyday", "Jason Farnham", "Inglês", "Instrumental", "N/A", "Desconhecido"},
-    {5, "Cylinder Five", "Chris Zabriskie", "Inglês", "Instrumental", "N/A", "Desconhecido"},
-    {6, "AEROHEAD", "Haven", "Inglês", "Instrumental", "N/A", "Desconhecido"},
-    {7, "Dreams", "Joakim Karud", "Inglês", "Instrumental", "N/A", "Desconhecido"}
+    {0, "Mamacita", "Mike Leite", "Inglês", "Instrumental", "N/A", "2022"},
+    {1, "Baião de Dois", "Luiz Gonzaga", "Português", "Forró", "N/A", "1946"},
+    {2, "Chorinho Típico", "Ernesto Nazareth", "Português", "Choro", "N/A", "1906"},
+    {3, "Assanhado", "Jacob do Bandolim", "Português", "Choro", "N/A", "1966"},
+    {4, "Everyday", "Jason Farnham", "Inglês", "Instrumental", "N/A", "2013"},
+    {5, "Cylinder Five", "Chris Zabriskie", "Inglês", "Instrumental", "N/A", "2014"},
+    {6, "AEROHEAD", "Haven", "Inglês", "Instrumental", "N/A", "2014"},
+    {7, "Dreams", "Joakim Karud", "Inglês", "Instrumental", "N/A", "2017"}
 };
 
+// funcao de mandar a musica para o client
 void send_file_data(FILE* fp, int sockfd, struct sockaddr_in addr) {
     int n;
     char buffer[SIZE];
@@ -41,13 +42,13 @@ void send_file_data(FILE* fp, int sockfd, struct sockaddr_in addr) {
         sendto(sockfd, buffer, SIZE, 0, (struct sockaddr*)&addr, addr_size);
     }
 
-    // Sending the 'END'
     strcpy(buffer, "END");
     sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr*)&addr, addr_size);
 
     fclose(fp);
 }
 
+// funcao responsavel pelo funcinamento UDP do servidor
 void* handle_udp(void* arg) {
     int sockfd;
     struct sockaddr_in server_addr, client_addr;
@@ -74,18 +75,17 @@ void* handle_udp(void* arg) {
 
     printf("UDP server started...\n");
 
+    // loop responsavel por gerir o lado UDP do servidor
     while (1) {
         addr_size = sizeof(client_addr);
         recv_len = recvfrom(sockfd, buffer, SIZE, 0, (struct sockaddr*)&client_addr, &addr_size);
         buffer[recv_len] = '\0';
 
         if (strcmp(buffer, "1") == 0) {
-            // Wait for the client to send the ID
             recv_len = recvfrom(sockfd, buffer, SIZE, 0, (struct sockaddr*)&client_addr, &addr_size);
             buffer[recv_len] = '\0';
             int id = atoi(buffer);
 
-            // Generate the filename based on the ID
             char filename[20];
             snprintf(filename, sizeof(filename), "%d.mp3", id);
 
@@ -107,6 +107,8 @@ void* handle_udp(void* arg) {
     return NULL;
 }
 
+
+// funcao responsavel por gerir o funcionamento TCP do servidor
 void* handle_tcp(void* arg) {
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -132,6 +134,7 @@ void* handle_tcp(void* arg) {
         exit(EXIT_FAILURE);
     }
 
+    // loop responsavel pelo lado TCP do servidor
     while (1) {
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen)) < 0) {
             perror("accept");
@@ -139,7 +142,7 @@ void* handle_tcp(void* arg) {
         }
 
         int valread = read(new_socket, buffer, SIZE);
-        buffer[valread] = '\0';  // Ensure the buffer is null-terminated
+        buffer[valread] = '\0';
         int index = atoi(buffer);
         if (index >= 0 && index < 8) {
             char response[SIZE];
@@ -148,8 +151,7 @@ void* handle_tcp(void* arg) {
                      list[index].tipo, list[index].refrao, list[index].ano_lancamento);
             send(new_socket, response, strlen(response), 0);
         } else if (index == 8) {
-            // Cliente pediu para listar todas as músicas
-            char response[SIZE * 8] = {0};  // Buffer grande o suficiente para todas as músicas
+            char response[SIZE * 8] = {0};
             for (int i = 0; i < 8; i++) {
                 char song_info[SIZE];
                 snprintf(song_info, SIZE, "ID: %d\nTítulo: %s\nIntérprete: %s\nIdioma: %s\nTipo: %s\nRefrão: %s\nAno de Lançamento: %s\n\n",
@@ -168,13 +170,17 @@ void* handle_tcp(void* arg) {
     return NULL;
 }
 
+// funcao responsavel pelo funcionamento do servidor
 int main() {
     pthread_t thread_id_tcp, thread_id_udp;
 
+    // criacao da thread TCP
     if (pthread_create(&thread_id_tcp, NULL, handle_tcp, NULL) != 0) {
         printf("Failed to create TCP thread\n");
         return 1;
     }
+
+    // criacao da thread UDP
     if (pthread_create(&thread_id_udp, NULL, handle_udp, NULL) != 0) {
         printf("Failed to create UDP thread\n");
         return 1;

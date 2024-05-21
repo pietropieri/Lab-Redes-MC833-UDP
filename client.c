@@ -4,15 +4,19 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+
 #define SIZE 1024
 #define TCP_PORT 9090
 #define UDP_PORT 8080
 
+
+// essa funcao cria um arquivo com a musica que foi recebida
 void write_file(int sockfd, struct sockaddr_in addr, char id) {
     int n;
     char buffer[SIZE];
     char filename[50];
 
+    // nome do arquivo
     sprintf(filename, "received-%c.mp3", id);
 
     FILE* fp = fopen(filename, "wb");
@@ -35,11 +39,13 @@ void write_file(int sockfd, struct sockaddr_in addr, char id) {
     fclose(fp);
 }
 
+// essa funcao envia um comando udp para o servidor
 void send_command_udp(int sockfd, struct sockaddr_in addr, const char* command) {
     sendto(sockfd, command, strlen(command) + 1, 0, (struct sockaddr*)&addr, sizeof(addr));
 }
 
-void request_tcp(int index) {
+// essa funcao envia um request tcp para o servidor
+void request_tcp(int index, const char* server_ip) {
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
     char buffer[1024] = {0};
@@ -54,7 +60,8 @@ void request_tcp(int index) {
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(TCP_PORT);
     
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+    // configuracao do ip
+    if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0) {
         printf("\nInvalid address/ Address not supported \n");
         close(sock);
         return;
@@ -73,6 +80,7 @@ void request_tcp(int index) {
     close(sock);
 }
 
+// funcao main responsavel pelo funcionamento do client
 int main(void) {
     int server_sockfd;
     struct sockaddr_in server_addr;
@@ -82,42 +90,46 @@ int main(void) {
         perror("[ERROR] Socket error");
         exit(1);
     }
+
+    // entrada do IP do server
+    char server_ip[20];
+    printf("Enter server IP address: ");
+    fgets(server_ip, sizeof(server_ip), stdin);
+    server_ip[strcspn(server_ip, "\n")] = 0;
+
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(UDP_PORT);
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_addr.sin_addr.s_addr = inet_addr(server_ip);
 
     int continue_running = 1;
     char input[10];
 
+    // loop de funcionamento do client
     while (continue_running) {
-        printf("Enter command\n1: Download MP3;\n2: Close server;\n3: Get list item;\n8: List all musics;\n0: Exit client:\n");
+        printf("Enter command\n1: Download MP3;\n3: List music by ID;\n8: List all musics;\n0: Exit client:\n");
         fgets(input, 10, stdin);
-        input[strcspn(input, "\n")] = 0;  // Remove newline character
+        input[strcspn(input, "\n")] = 0;
 
         if (strcmp(input, "1") == 0) {
             send_command_udp(server_sockfd, server_addr, "1");
             printf("Enter id (0-7): ");
             char id;
-            scanf("%s", &id);  // Read the index from user
+            scanf("%s", &id);
             getchar(); 
             printf("[REQUEST] Requesting MP3 file from server.\n");
             send_command_udp(server_sockfd, server_addr, &id);
             write_file(server_sockfd, server_addr, id);
-        } else if (strcmp(input, "2") == 0) {
-            printf("[REQUEST] Requesting to close the server.\n");
-            send_command_udp(server_sockfd, server_addr, "2");
-            continue_running = 0;  // Optionally exit the client after server shutdown
         } else if (strcmp(input, "3") == 0) {
-            printf("Enter index (0-7): ");
+            printf("Enter ID (0-7): ");
             int index;
-            scanf("%d", &index);  // Read the index from user
-            getchar(); // consume newline character
-            request_tcp(index);
+            scanf("%d", &index);
+            getchar();
+            request_tcp(index, server_ip);
         } else if (strcmp(input, "0") == 0) {
             printf("[CLOSING] Exiting client.\n");
             continue_running = 0;
         } else if (strcmp(input, "8") == 0)  {
-            request_tcp(8);
+            request_tcp(8, server_ip);
         } else {
             printf("[ERROR] Invalid command.\n");
         }
