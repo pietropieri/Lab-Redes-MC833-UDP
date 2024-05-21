@@ -73,7 +73,7 @@ void* handle_udp(void* arg) {
         exit(EXIT_FAILURE);
     }
 
-    printf("UDP server started...\n");
+    printf("UDP/TCP server started...\n");
 
     // loop responsavel por gerir o lado UDP do servidor
     while (1) {
